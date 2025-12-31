@@ -29,9 +29,9 @@ function sleep(ms) {
       });
 
   await loginVantage(page);
-  //await sleep(3*1000);
-  //await getRebateReport(page);
-  //await processRebate();
-
-  // browser.close();
+  await sleep(3*1000);
+  await getRebateReport(page);
+  await processRebate();
+  await sleep(7*1000);
+  browser.close();
 })();

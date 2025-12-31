@@ -7,6 +7,10 @@ const { loginVantage } = require('./loginVantage');
 const { transferRebate, inputVerificationCode } = require('./transferRebate');
 const { sendMessage } = require('./telegramAPI');
 
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 
 function waitForOTP(chatId, timeoutMs = 120000) {
     return new Promise((resolve, reject) => {
@@ -71,6 +75,10 @@ async function startRebateTransfer(chatId) {
         await sendMessage(chatId, `❌ *Lỗi chuyển tiền*\n${err.message}`, { parse_mode: 'Markdown' });  
         throw err;
     }
+
+    await sleep(7000);
+
+    browser.close();
     // ❗ KHÔNG đóng browser để user còn confirm / debug
 }
 
