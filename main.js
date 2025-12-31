@@ -28,10 +28,10 @@ function sleep(ms) {
         parse_mode: 'Markdown',
       });
 
-  //await loginVantage(page);
+  await loginVantage(page);
   //await sleep(3*1000);
   //await getRebateReport(page);
-  await processRebate();
+  //await processRebate();
 
   // browser.close();
 })();

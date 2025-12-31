@@ -8,6 +8,10 @@ const LOGIN_KEYWORD = '/login';
 const COOKIE_PATH = path.join(__dirname, '../cookies/vantage.json');
 const USER_ID = process.env.TELEGRAM_ID;
 
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 /* ================= COOKIE ================= */
 
 async function loadCookies(page) {
@@ -109,6 +113,46 @@ async function loginVantage(page) {
         await page.keyboard.press('Escape');
         console.log('⌨️ Đã gửi ESC để đóng popup');
     } catch {}
+
+    // 8️⃣ Click "Nhận Hoa Hồng"
+    try {
+        console.log('💰 Đang click "Nhận Hoa Hồng"...');
+    
+        const applyBtn = await page.waitForSelector(
+            'button[data-testid="applyRebate"]',
+            { visible: true, timeout: 15000 }
+        );
+    
+        // scroll chắc chắn vào viewport
+        await applyBtn.evaluate(el =>
+            el.scrollIntoView({ block: 'center' })
+        );
+    
+        // đợi UI ổn định
+        await new Promise(r => setTimeout(r, 800));
+    
+        const box = await applyBtn.boundingBox();
+        if (!box) {
+            throw new Error('Không lấy được boundingBox nút Nhận Hoa Hồng');
+        }
+
+        await sleep(2000);
+    
+        // native mouse click
+        await page.mouse.move(
+            box.x + box.width / 2,
+            box.y + box.height / 2
+        );
+        await page.mouse.down();
+        await page.mouse.up();
+    
+        console.log('✅ Đã click "Nhận Hoa Hồng"');
+    
+    } catch (err) {
+        console.error('❌ Không click được "Nhận Hoa Hồng":', err.message);
+    }
+
+    await sleep(7000);
 
     console.log('🎯 Login Vantage hoàn tất');
     await sendMessage(USER_ID, 'Đăng nhập Vantage thành công!', {
