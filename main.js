@@ -1,4 +1,5 @@
 const puppeteer = require('puppeteer');
+const cron = require('node-cron');
 const fs = require('fs');
 const path = require('path');
 require('dotenv').config();
@@ -12,26 +13,22 @@ function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-(async () => {
-    const browser = await puppeteer.launch({
+cron.schedule('12 23 * * *', async () => {
+  console.log('⏰ Bắt đầu chạy lúc 9h40');
+
+  const browser = await puppeteer.launch({
     headless: false,
-    defaultViewport: null,          // QUAN TRỌNG
-    args: [
-      '--start-maximized',           // mở full màn hình
-      '--no-sandbox',
-      '--disable-setuid-sandbox'
-    ]
+    defaultViewport: null,
+    args: ['--start-maximized', '--no-sandbox']
   });
+
   const page = await browser.newPage();
 
-  await sendMessage(USER_ID, '🔫 Bắt đầu lấy dữ liệu thưởng sàn Vantage', {
-        parse_mode: 'Markdown',
-      });
-
+  await sendMessage(USER_ID, '🔫 Bắt đầu lấy dữ liệu thưởng sàn Vantage');
   await loginVantage(page);
-  await sleep(3*1000);
+  await sleep(3000);
   await getRebateReport(page);
   await processRebate();
-  await sleep(7*1000);
-  browser.close();
-})();
+  await sleep(7000);
+  await browser.close();
+});
