@@ -13,8 +13,8 @@ function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-cron.schedule('12 23 * * *', async () => {
-  console.log('⏰ Bắt đầu chạy lúc 9h40');
+cron.schedule('59 9 * * *', async () => {
+  console.log('⏰ Bắt đầu chạy');
 
   const browser = await puppeteer.launch({
     headless: false,
