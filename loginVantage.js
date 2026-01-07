@@ -2,7 +2,7 @@ const fs = require('fs');
 require('dotenv').config();
 const { sendMessage } = require('./telegramAPI');
 
-const TARGET_URL = 'https://ibportal.vtg-mkt-apac.com/rebatereport';
+const TARGET_URL = 'https://ibportal.vtg-mkt-apac.com/';
 const LOGIN_KEYWORD = '/login';
 const USER_ID = process.env.TELEGRAM_ID;
 
@@ -32,23 +32,46 @@ async function skipVantageGuides(page, maxSteps = 3) {
 }
 
 /* ================= SAFE GOTO ================= */
-
-async function safeGoto(page, url, maxRetry = 3) {
+async function safeGotoUntilLoginPageReady(page, url, maxRetry = 15) {
     for (let attempt = 1; attempt <= maxRetry; attempt++) {
+        console.log(`🌐 Load trang (lần ${attempt})`);
+
         try {
-            console.log(`🌐 Load trang (lần ${attempt})`);
             await page.goto(url, {
-                waitUntil: 'networkidle2',
-                timeout: 120000
+                waitUntil: 'domcontentloaded',
+                timeout: 60000
             });
+
+            // 🧠 ĐỢI LOGO VANTAGE (DẤU HIỆU TRANG LOGIN LOAD THẬT)
+            await page.waitForSelector(
+                'div.login-logo-wrapper img',
+                { timeout: 10000 }
+            );
+
+            console.log('✅ Trang login Vantage load thành công (logo đã xuất hiện)');
             return true;
+
         } catch (err) {
-            console.error(`❌ Load thất bại lần ${attempt}:`, err.message);
-            if (attempt === maxRetry) throw err;
+            console.error(`⚠️ Trang chưa sẵn sàng: ${err.message}`);
+
+            if (attempt === maxRetry) {
+                throw new Error(
+                    '❌ Không load được trang login Vantage sau nhiều lần thử'
+                );
+            }
+
             await sleep(3000);
+
+            try {
+                await page.reload({
+                    waitUntil: 'domcontentloaded',
+                    timeout: 60000
+                });
+            } catch {}
         }
     }
 }
+
 
 /* ================= LOGIN ================= */
 
@@ -69,7 +92,9 @@ async function loginVantage(page) {
     });
 
     // 1️⃣ Load trang
-    await safeGoto(page, TARGET_URL, 4);
+    await safeGotoUntilLoginPageReady(page, TARGET_URL, 10);
+
+    await sleep(2000);
 
     // 2️⃣ Nếu chưa login → login mới
     if (page.url().includes(LOGIN_KEYWORD)) {
@@ -90,6 +115,8 @@ async function loginVantage(page) {
             process.env.VANTAGE_PASSWORD,
             { delay: 50 }
         );
+
+        await sleep(2000);
 
         await Promise.all([
             page.click('button[data-testid="login"]'),
@@ -141,7 +168,7 @@ async function loginVantage(page) {
 
     await sleep(3000);
 
-    await sendMessage(USER_ID, '✅ Đăng nhập Vantage thành công (login mới)', {
+    await sendMessage(USER_ID, '✅ Đăng nhập Vantage thành công', {
         parse_mode: 'Markdown'
     });
 

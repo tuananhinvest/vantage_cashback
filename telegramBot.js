@@ -6,6 +6,7 @@ const { getBot } = require('./telegramBotInstance');
 const bot = getBot(true); // bot chính khởi tạo polling
 const { isUserAllowed } = require('./userAccess');
 const { startRebateTransfer } = require('./transferController');
+const { checkFailedTransferHistory } = require('./getFailedTransferHistory');
 
 
 function getTodayString() {
@@ -56,5 +57,53 @@ bot.onText(/\/thuong/, async (msg) => {
             chatId,
             `❌ Lỗi khi chuyển tiền:\n${err.message}`
         );
+    }
+});
+
+bot.onText(/\/check/, async (msg) => {
+    const chatId = msg.chat.id;
+
+    if (!isUserAllowed(msg)) {
+        await bot.sendMessage(chatId, '❌ Bạn không có quyền.');
+        return;
+    }
+
+    await bot.sendMessage(chatId, '🔍 Đang kiểm tra lịch sử chuyển tiền...');
+
+    try {
+        const {
+            rejectedRows,
+            pendingRows,
+            csvPath
+        } = await checkFailedTransferHistory();
+
+        if (rejectedRows.length > 0 && csvPath) {
+            await bot.sendDocument(
+                chatId,
+                csvPath,
+                {
+                    caption: `❌ Có ${rejectedRows.length} lệnh TỪ CHỐI`
+                }
+            );
+        }
+
+        if (pendingRows.length > 0) {
+            const msgText = pendingRows.map(r =>
+                `⚠️ Chưa thanh toán\n• TK: ${r.targetAccount}\n• ${r.amount}$`
+            ).join('\n\n');
+
+            await bot.sendMessage(chatId, msgText);
+        }
+
+        if (rejectedRows.length === 0 && pendingRows.length === 0) {
+            await bot.sendMessage(
+                chatId,
+                '✅ Không có lệnh Từ chối / Chưa thanh toán hôm nay'
+            );
+        }
+
+    } catch (err) {
+        console.error(err);
+        await bot.sendMessage(chatId, `❌ Lỗi: ${err.message}`);
     }
 });

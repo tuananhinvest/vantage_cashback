@@ -108,9 +108,8 @@ async function inputVerificationCode(page, code) {
     });
     
     console.log('🎉 Đã xác nhận chuyển tiền');
-    await sendMessage(USER_ID, '✅ Đã thưởng thành công ngày hôm nay. Đội ngũ Cashback Exchange!', { parse_mode: 'Markdown' });
+    await sendMessage(USER_ID, '✅ Đã thưởng thành công ngày hôm nay. Ấn /check sau vài tiếng để kiểm tra các lệnh chuyển tiền thất bại', { parse_mode: 'Markdown' });
 }
-
 
 async function transferRebate(page, csvPath) {
     console.log('💸 Vào trang chuyển hoàn tiền');
