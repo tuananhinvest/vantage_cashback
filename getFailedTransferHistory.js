@@ -21,7 +21,7 @@ function getTodayVN() {
 
 async function checkFailedTransferHistory() {
     const browser = await puppeteer.launch({
-        headless: false,
+        headless: true,
         defaultViewport: null,
         args: ['--start-maximized', '--no-sandbox']
     });

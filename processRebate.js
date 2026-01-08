@@ -1,8 +1,8 @@
 // processRebate.js
 const fs = require('fs');
 const path = require('path');
-const XLSX = require('xlsx');
 require('dotenv').config();
+
 const { sendMessage, sendFile } = require('./telegramAPI');
 const USER_ID = process.env.TELEGRAM_ID;
 
@@ -11,13 +11,13 @@ const {
     upsertCentAccount,
     upsertVantageData,
     getCentTotal,
-    deleteCentAccount
+    deleteCentAccount,
+    getAllReplaceAccounts,
 } = require('./db');
 
 /* ================= CONFIG ================= */
 
 const DATA_DIR = path.join(__dirname, 'vantage_data');
-const MICRO_MAP_FILE = path.join(__dirname, 'vantage_micro.xlsx');
 
 /* ================= HELPERS ================= */
 
@@ -37,29 +37,9 @@ function findRebateFileByDate(dateStr) {
 
     return files.find(file => {
         if (!file.endsWith('.xlsx')) return false;
-
         const matches = file.match(new RegExp(dateStr, 'g'));
         return matches && matches.length >= 2;
     });
-}
-
-function loadMicroAccountMap() {
-    if (!fs.existsSync(MICRO_MAP_FILE)) {
-        throw new Error('❌ Không tìm thấy file vantage_micro.xlsx');
-    }
-
-    const wb = XLSX.readFile(MICRO_MAP_FILE);
-    const sheet = wb.Sheets[wb.SheetNames[0]];
-    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-
-    const map = new Map();
-    for (let i = 1; i < rows.length; i++) {
-        const [fromAcc, toAcc] = rows[i];
-        if (fromAcc && toAcc) {
-            map.set(String(fromAcc).trim(), String(toAcc).trim());
-        }
-    }
-    return map;
 }
 
 /* ================= MAIN ================= */
@@ -75,28 +55,28 @@ async function processRebate() {
     console.log('📅 Ngày xuất CSV:', today);
 
     const rebateFileName = findRebateFileByDate(yesterday);
-
     if (!rebateFileName) {
         console.log(`⚠️ Chưa tồn tại file rebate cho ngày ${yesterday}`);
-        return {
-            success: false,
-            message: 'Rebate file not found',
-            totalUSD: 0
-        };
+        return { success: false, message: 'Rebate file not found', totalUSD: 0 };
     }
 
     const rebateFilePath = path.join(DATA_DIR, rebateFileName);
     console.log('✅ Tìm thấy file:', rebateFileName);
 
-    const microMap = loadMicroAccountMap();
-    console.log('📘 Đã load mapping Micro account');
+    /* ===== LOAD REPLACE MAP TỪ DB (1 LẦN) ===== */
+    const replaceMap = await getAllReplaceAccounts();
+    console.log(`📘 Đã load ${replaceMap.size} mapping account_replace từ DB`);
 
+    /* ===== READ EXCEL REBATE ===== */
+    const XLSX = require('xlsx');
     const wb = XLSX.readFile(rebateFilePath);
     const sheet = wb.Sheets[wb.SheetNames[0]];
     const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
 
     const accountTotalMap = new Map();
     let totalUSD = 0;
+
+    /* ================= XỬ LÝ TỪNG DÒNG ================= */
 
     for (let i = 1; i < rows.length; i++) {
         const row = rows[i];
@@ -111,25 +91,24 @@ async function processRebate() {
         /* ================= MICRO (CENT) ================= */
 
         if (lotType === 'Micro') {
+            const mappedAccount = replaceMap.get(account);
 
-            // ❌ CHƯA MAP → LƯU DB CENT
-            if (!microMap.has(account)) {
-                console.log(`⚠️ Cent chưa map: ${account}`);
+            // ❌ CHƯA MAP
+            if (!mappedAccount) {
+                console.log(`⚠️ Cent chưa map (DB): ${account}`);
 
                 await upsertCentAccount(account, commission);
 
                 await sendMessage(
                     USER_ID,
-                    `⚠️ Cent chưa map: ${account}\nHoa hồng hôm nay: ${commission.toFixed(2)}$`,
+                    `⚠️ *Cent chưa map*\n• TK: ${account}\n• Hoa hồng: ${commission.toFixed(2)}$`,
                     { parse_mode: 'Markdown' }
                 );
 
                 continue;
             }
 
-            // ✅ ĐÃ MAP → GỘP CENT CŨ + HÔM NAY
-            const mappedAccount = microMap.get(account);
-
+            // ✅ ĐÃ MAP
             const centAccumulated = await getCentTotal(account);
             const finalCommission = centAccumulated + commission;
 
@@ -142,7 +121,6 @@ async function processRebate() {
 
             totalUSD += finalCommission;
 
-            // lưu DB vantage
             await upsertVantageData(
                 mappedAccount,
                 finalCommission,
@@ -150,9 +128,7 @@ async function processRebate() {
                 today
             );
 
-            // ❗ xóa cent khỏi DB
             await deleteCentAccount(account);
-
             continue;
         }
 
@@ -163,7 +139,6 @@ async function processRebate() {
 
         totalUSD += commission;
 
-        // lưu DB vantage
         await upsertVantageData(
             account,
             commission,
@@ -174,11 +149,7 @@ async function processRebate() {
 
     if (accountTotalMap.size === 0) {
         console.log('⚠️ Không có dữ liệu hợp lệ để xuất file');
-        return {
-            success: false,
-            message: 'No valid rebate data',
-            totalUSD: 0
-        };
+        return { success: false, message: 'No valid rebate data', totalUSD: 0 };
     }
 
     /* ================= EXPORT CSV ================= */
@@ -198,12 +169,12 @@ async function processRebate() {
     await sendFile(
         USER_ID,
         OUTPUT_CSV,
-        `Tổng thưởng hôm nay: ${totalUSD.toFixed(2)}$`
+        `💰 *Tổng thưởng hôm nay*: ${totalUSD.toFixed(2)}$`
     );
 
     await sendMessage(
         USER_ID,
-        'Click /thuong để thực hiện thưởng',
+        '👉 Click /thuong để thực hiện thưởng',
         { parse_mode: 'Markdown' }
     );
 

@@ -90,8 +90,6 @@ async function upsertVantageData(account, commission, volume, date) {
     }
 }
 
-
-
 /* ================= CENT HELPERS ================= */
 
 // lấy tổng commission cent đã tích lũy
@@ -121,11 +119,40 @@ async function deleteCentAccount(account) {
     }
 }
 
+/* ================= VANTAGE REPLACE ================= */
+
+async function getAllReplaceAccounts() {
+    const [rows] = await pool.query(
+        'SELECT account, account_replace FROM vantage_replace'
+    );
+
+    const map = new Map();
+    for (const r of rows) {
+        map.set(String(r.account), String(r.account_replace));
+    }
+    return map;
+}
+
+
+async function upsertReplaceAccount(account, accountReplace) {
+    await pool.query(
+        `
+        INSERT INTO vantage_replace (account, account_replace)
+        VALUES (?, ?)
+        ON DUPLICATE KEY UPDATE
+            account_replace = VALUES(account_replace)
+        `,
+        [account, accountReplace]
+    );
+}
+
 
 module.exports = {
     initTables,
     upsertCentAccount,
     upsertVantageData,
     getCentTotal,
-    deleteCentAccount
+    deleteCentAccount,
+    getAllReplaceAccounts,
+    upsertReplaceAccount
 };
