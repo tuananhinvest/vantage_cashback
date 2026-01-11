@@ -40,7 +40,6 @@ bot.onText(/\/start/, async (msg) => {
 
     try {
         await runGetRebate();
-        await bot.sendMessage(chatId, '✅ Hoàn tất lấy dữ liệu thưởng');
     } catch (err) {
         await bot.sendMessage(chatId, `❌ Lỗi:\n${err.message}`);
     } finally {

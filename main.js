@@ -35,7 +35,7 @@ async function runGetRebate() {
         await getRebateReport(page);
         await processRebate();
 
-        await sendMessage(USER_ID, '✅ Lấy dữ liệu thưởng thành công, click /check sau vài tiếng để kiểm tra trạng thái hoàn tiền');
+        await sendMessage(USER_ID, '✅ Lấy dữ liệu thưởng thành công');
     } catch (err) {
         console.error('❌ Lỗi runGetRebate:', err.message);
         await sendMessage(
