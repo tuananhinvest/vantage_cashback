@@ -21,6 +21,10 @@ const DATA_DIR = path.join(__dirname, 'vantage_data');
 
 /* ================= HELPERS ================= */
 
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 function getYesterdayString() {
     const d = new Date();
     d.setDate(d.getDate() - 1);
@@ -104,6 +108,8 @@ async function processRebate() {
                     `⚠️ *Cent chưa map*\n• TK: ${account}\n• Hoa hồng: ${commission.toFixed(2)}$`,
                     { parse_mode: 'Markdown' }
                 );
+
+                await sleep(1500);
 
                 continue;
             }

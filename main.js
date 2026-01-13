@@ -21,7 +21,17 @@ async function runGetRebate() {
     const browser = await puppeteer.launch({
         headless: true,
         defaultViewport: null,
-        args: ['--start-maximized', '--no-sandbox']
+        args: [
+            "--no-sandbox",
+            "--disable-gpu",
+            "--disable-dev-shm-usage",
+            "--disable-setuid-sandbox",
+            "--no-first-run",
+            "--no-zygote",
+            "--start-maximized",
+            "--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+        ],
+        defaultViewport: null,
     });
 
     const page = await browser.newPage();
