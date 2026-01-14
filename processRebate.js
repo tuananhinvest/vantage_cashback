@@ -13,6 +13,7 @@ const {
     getCentTotal,
     deleteCentAccount,
     getAllReplaceAccounts,
+    getAllCustomerUIDsByExchange
 } = require('./db');
 
 /* ================= CONFIG ================= */
@@ -67,20 +68,27 @@ async function processRebate() {
     const rebateFilePath = path.join(DATA_DIR, rebateFileName);
     console.log('✅ Tìm thấy file:', rebateFileName);
 
-    /* ===== LOAD REPLACE MAP TỪ DB (1 LẦN) ===== */
-    const replaceMap = await getAllReplaceAccounts();
-    console.log(`📘 Đã load ${replaceMap.size} mapping account_replace từ DB`);
+    /* ===== LOAD DATA 1 LẦN ===== */
 
-    /* ===== READ EXCEL REBATE ===== */
+    const replaceMap = await getAllReplaceAccounts();
+    console.log(`📘 Đã load ${replaceMap.size} mapping account_replace`);
+
+    const customerUIDSet = await getAllCustomerUIDsByExchange('Vantage');
+    console.log(`👥 Loaded ${customerUIDSet.size} customers từ DB`);
+
+    /* ===== READ EXCEL ===== */
+
     const XLSX = require('xlsx');
     const wb = XLSX.readFile(rebateFilePath);
     const sheet = wb.Sheets[wb.SheetNames[0]];
     const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
 
     const accountTotalMap = new Map();
+    const unmappedCentList = [];
+
     let totalUSD = 0;
 
-    /* ================= XỬ LÝ TỪNG DÒNG ================= */
+    /* ================= LOOP ================= */
 
     for (let i = 1; i < rows.length; i++) {
         const row = rows[i];
@@ -92,6 +100,11 @@ async function processRebate() {
 
         if (!account || commission === 0) continue;
 
+        /* ❌ BỎ QUA NẾU KHÔNG CÓ TRONG CUSTOMERS */
+        if (!customerUIDSet.has(account)) {
+            continue;
+        }
+
         /* ================= MICRO (CENT) ================= */
 
         if (lotType === 'Micro') {
@@ -99,17 +112,14 @@ async function processRebate() {
 
             // ❌ CHƯA MAP
             if (!mappedAccount) {
-                console.log(`⚠️ Cent chưa map (DB): ${account}`);
+                console.log(`⚠️ Cent chưa map: ${account}`);
 
                 await upsertCentAccount(account, commission);
 
-                await sendMessage(
-                    USER_ID,
-                    `⚠️ *Cent chưa map*\n• TK: ${account}\n• Hoa hồng: ${commission.toFixed(2)}$`,
-                    { parse_mode: 'Markdown' }
-                );
-
-                await sleep(1500);
+                unmappedCentList.push({
+                    account,
+                    commission
+                });
 
                 continue;
             }
@@ -151,6 +161,23 @@ async function processRebate() {
             volume,
             today
         );
+    }
+
+    /* ================= SEND CENT SUMMARY ================= */
+
+    if (unmappedCentList.length > 0) {
+        const message =
+            `⚠️ *Danh sách Cent chưa map (${unmappedCentList.length})*\n\n` +
+            unmappedCentList
+                .map(
+                    (c, i) =>
+                        `${i + 1}. TK: ${c.account} – ${c.commission.toFixed(2)}$`
+                )
+                .join('\n');
+
+        await sendMessage(USER_ID, message, {
+            parse_mode: 'Markdown'
+        });
     }
 
     if (accountTotalMap.size === 0) {

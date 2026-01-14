@@ -8,6 +8,7 @@ const { isUserAllowed } = require('./userAccess');
 const { startRebateTransfer } = require('./transferController');
 const { checkFailedTransferHistory } = require('./getFailedTransferHistory');
 const { startRebateTransferReject } = require('./transferRejectedController');
+const { syncVantageCustomers } = require('./getUID');
 const { runGetRebate } = require('./main');
 
 function getTodayString() {
@@ -149,15 +150,44 @@ bot.onText(/\/return/, async (msg) => {
         return;
     }
 
-    await bot.sendMessage(
-        chatId,
-        '🔁 *Bắt đầu hoàn tiền cho các lệnh TỪ CHỐI*',
-        { parse_mode: 'Markdown' }
-    );
+    await bot.sendMessage(chatId, '🔁 *Bắt đầu hoàn tiền cho các lệnh TỪ CHỐI*', { parse_mode: 'Markdown' });
 
     try {
         await startRebateTransferReject(chatId);
     } catch (err) {
         console.error(err);
+    }
+});
+
+bot.onText(/\/getuser/, async (msg) => {
+    const chatId = msg.chat.id;
+
+    if (!isUserAllowed(msg)) {
+        await bot.sendMessage(chatId, '❌ Bạn không có quyền sử dụng lệnh này.');
+        return;
+    }
+
+    if (isRunning) {
+        await bot.sendMessage(chatId, '⏳ Hệ thống đang chạy tác vụ khác, vui lòng chờ...');
+        return;
+    }
+
+    isRunning = true;
+
+    await bot.sendMessage(chatId, '👥 *Bắt đầu đồng bộ tài khoản Vantage...*', { parse_mode: 'Markdown' });
+
+    try {
+        const result = await syncVantageCustomers();
+
+        //await bot.sendMessage(
+        //    chatId,
+        //    `✅ *Đồng bộ hoàn tất*\n• Tổng tài khoản xử lý: ${result?.total || 'N/A'}`,
+        //    { parse_mode: 'Markdown' }
+        //);
+    } catch (err) {
+        console.error('❌ Lỗi /getuser:', err);
+        await bot.sendMessage(chatId, `❌ Lỗi khi đồng bộ user:\n${err.message}`);
+    } finally {
+        isRunning = false;
     }
 });

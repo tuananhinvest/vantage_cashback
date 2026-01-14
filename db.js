@@ -146,6 +146,35 @@ async function upsertReplaceAccount(account, accountReplace) {
     );
 }
 
+/* ================= CUSTOMERS ================= */
+
+async function insertCustomerIfNotExists(uid, exchange = 'Vantage') {
+    const conn = await pool.getConnection();
+    try {
+        await conn.execute(
+            `
+            INSERT IGNORE INTO customers (uid, exchange)
+            VALUES (?, ?)
+            `,
+            [uid, exchange]
+        );
+    } finally {
+        conn.release();
+    }
+}
+
+/* ================= CUSTOMERS ================= */
+
+async function getAllCustomerUIDsByExchange(exchange = 'Vantage') {
+    const [rows] = await pool.query(
+        'SELECT uid FROM customers WHERE exchange = ?',
+        [exchange]
+    );
+    return new Set(rows.map(r => String(r.uid)));
+}
+
+
+
 
 module.exports = {
     initTables,
@@ -154,5 +183,8 @@ module.exports = {
     getCentTotal,
     deleteCentAccount,
     getAllReplaceAccounts,
-    upsertReplaceAccount
+    upsertReplaceAccount,
+    insertCustomerIfNotExists,
+    getAllCustomerUIDsByExchange
+    
 };

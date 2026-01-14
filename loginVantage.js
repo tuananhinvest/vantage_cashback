@@ -74,7 +74,6 @@ async function safeGotoUntilLoginPageReady(page, url, maxRetry = 15) {
 
 
 /* ================= LOGIN ================= */
-
 async function loginVantage(page) {
 
     // ✅ ÉP NGÔN NGỮ TIẾNG VIỆT
@@ -168,9 +167,9 @@ async function loginVantage(page) {
 
     await sleep(3000);
 
-    await sendMessage(USER_ID, '✅ Đăng nhập Vantage thành công', {
-        parse_mode: 'Markdown'
-    });
+    //await sendMessage(USER_ID, '✅ Đăng nhập Vantage thành công', {
+    //    parse_mode: 'Markdown'
+    //});
 
     return true;
 }
