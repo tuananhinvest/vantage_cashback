@@ -97,7 +97,7 @@ async function checkFailedTransferHistory() {
                     break;
                 }
 
-                if (row.status.includes('Từ chối')) {
+                if (row.status.includes('Từ Chối')) {
                     rejectedRows.push(row);
                 }
 

@@ -19,7 +19,7 @@ async function runGetRebate() {
     console.log('🚀 Bắt đầu chạy lấy thưởng');
 
     const browser = await puppeteer.launch({
-        headless: true,
+        headless: false,
         defaultViewport: null,
         args: [
             "--no-sandbox",
