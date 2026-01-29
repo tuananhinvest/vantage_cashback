@@ -12,6 +12,69 @@ function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+// Hàm đợi trang load xong
+async function waitForVantageLoaded(page, maxWaitMs = 180000) {
+    console.log('⏳ Đang đợi trang Vantage load xong...');
+
+    const start = Date.now();
+
+    while (true) {
+        const loadingVisible = await page.evaluate(() => {
+            const spinner = document.querySelector('.el-loading-spinner');
+            return spinner && spinner.offsetParent !== null;
+        });
+
+        if (!loadingVisible) {
+            console.log('✅ Spinner biến mất → trang sẵn sàng');
+            return;
+        }
+
+        if (Date.now() - start > maxWaitMs) {
+            throw new Error('⏰ Timeout chờ spinner (> 3 phút)');
+        }
+
+        await sleep(1000); // ✅ THAY page.waitForTimeout
+    }
+}
+
+async function gotoVantageWithRetry(
+    page,
+    url,
+    maxRetry = 3,
+    waitPerTryMs = 180000
+) {
+    for (let attempt = 1; attempt <= maxRetry; attempt++) {
+        try {
+            console.log(`🌐 Load trang Vantage (lần ${attempt}/${maxRetry})`);
+
+            await page.goto(url, {
+                waitUntil: 'domcontentloaded',
+                timeout: 120000
+            });
+
+            await skipVantageGuides(page, 3);
+
+            await waitForVantageLoaded(page, waitPerTryMs);
+
+            console.log('🎯 Trang load thành công');
+            return;
+        } catch (err) {
+            console.warn(`⚠️ Load thất bại lần ${attempt}: ${err.message}`);
+
+            if (attempt === maxRetry) {
+                throw new Error(
+                    '❌ Trang Vantage load thất bại sau 3 lần thử'
+                );
+            }
+
+            console.log('🔄 Reload lại trang sau 5 giây...');
+            await sleep(5000); // ✅ THAY page.waitForTimeout
+        }
+    }
+}
+
+
+
 function getLatestValidFile(dir) {
     const files = fs.readdirSync(dir)
         .map(name => {
@@ -61,10 +124,9 @@ async function skipVantageGuides(page, maxSteps = 3) {
 async function getRebateReport(page) {
     console.log('📊 Bắt đầu lấy Rebate Report');
 
-    await page.goto(TARGET_URL, {
-        waitUntil: 'networkidle2',
-        timeout: 120000
-    });
+    await gotoVantageWithRetry(page, TARGET_URL, 3, 180000);
+
+    //await waitForVantageLoaded(page);
 
     await skipVantageGuides(page, 3);
 
@@ -135,7 +197,7 @@ async function getRebateReport(page) {
         );
 
         console.log('🔄 Đã click nút CẬP NHẬT');
-        await sleep(3000);
+        await waitForVantageLoaded(page, 60000);
     } catch (err) {
         console.error(err);
         throw new Error('❌ Không click được nút CẬP NHẬT');
@@ -159,6 +221,7 @@ async function getRebateReport(page) {
 
         console.log('📂 Đã chuyển sang tab Tài Khoản');
         await sleep(2000);
+        await waitForVantageLoaded(page, 60000);
     } catch (err) {
         console.error(err);
         throw new Error('❌ Không chuyển được sang tab Tài Khoản');
@@ -197,8 +260,8 @@ await page.click('.icon_wrapper > div.filter:not(.ht-drop-down)');
 console.log('⬇️ Đã click nút tải file');
     
 
-    console.log('⏳ Đợi 7 giây để Chrome tải file...');
-    await sleep(7000);
+    console.log('⏳ Đợi 15 giây để Chrome tải file...');
+    await sleep(15000);
 
     /* 👉 CHỜ FILE XUẤT HIỆN */
     let downloadedFile = null;
@@ -216,6 +279,8 @@ console.log('⬇️ Đã click nút tải file');
 
     const targetPath = path.join(TARGET_DIR, downloadedFile.name);
     fs.copyFileSync(downloadedFile.fullPath, targetPath);
+
+    await sleep(3000);
 
     console.log('✅ Đã copy file về:', targetPath);
     await sendMessage(USER_ID, 'Lấy dữ liệu thành công', {
