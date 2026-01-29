@@ -79,9 +79,9 @@ async function getRebateReport(page) {
     try {
         const shortcutSelect = await page.waitForSelector(
             'div[data-testid="shortcut"]',
-            { timeout: 10000 }
+            { timeout: 100000 }
         );
-        await sleep(1500);
+        await sleep(10000);
 
         const selectBox = await shortcutSelect.boundingBox();
         if (!selectBox) throw new Error('Không lấy được box shortcut select');
@@ -90,11 +90,11 @@ async function getRebateReport(page) {
             selectBox.x + selectBox.width / 2,
             selectBox.y + selectBox.height / 2
         );
-        await sleep(1500);
+        await sleep(10000);
 
         await page.waitForSelector(
             'div.el-select-dropdown li.el-select-dropdown__item[data-testid="2"]',
-            { timeout: 8000 }
+            { timeout: 100000 }
         );
 
         const yesterdayItem = await page.$(
@@ -103,7 +103,7 @@ async function getRebateReport(page) {
 
         const itemBox = await yesterdayItem.boundingBox();
         if (!itemBox) throw new Error('Không lấy được box item Hôm Qua');
-        await sleep(1500);
+        await sleep(30000);
 
         await page.mouse.click(
             itemBox.x + itemBox.width / 2,

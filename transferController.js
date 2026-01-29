@@ -60,6 +60,15 @@ async function startRebateTransfer(chatId) {
         // ===== 2. UPLOAD CSV + CLICK GỬI MÃ =====
         await transferRebate(page, csvPath);
 
+        await sleep(3000);
+
+        // 4️⃣ Đóng popup bằng ESC
+        try {
+            await page.keyboard.press('Escape');
+        } catch {}
+    
+        await sleep(3000);
+
         // ===== 3. YÊU CẦU USER NHẬP CODE =====
         await sendMessage(chatId,'📧 *Vui lòng nhập mã code từ email*',{ parse_mode: 'Markdown' });
 
