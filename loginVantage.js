@@ -81,14 +81,14 @@ async function loginVantage(page) {
         'Accept-Language': 'vi-VN,vi;q=0.9'
     });
 
-    await page.evaluateOnNewDocument(() => {
-        Object.defineProperty(navigator, 'language', {
-            get: () => 'vi-VN'
-        });
-        Object.defineProperty(navigator, 'languages', {
-            get: () => ['vi-VN', 'vi']
-        });
-    });
+    //await page.evaluateOnNewDocument(() => {
+    //    Object.defineProperty(navigator, 'language', {
+    //        get: () => 'vi-VN'
+    //    });
+    //    Object.defineProperty(navigator, 'languages', {
+    //        get: () => ['vi-VN', 'vi']
+    //    });
+    //});
 
     // 1️⃣ Load trang
     await safeGotoUntilLoginPageReady(page, TARGET_URL, 10);

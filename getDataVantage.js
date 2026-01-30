@@ -252,7 +252,7 @@ await page.evaluate(() => {
 console.log('📜 Đã cuộn tới nút download');
 
 // đợi UI ổn định
-await sleep(1000);
+await sleep(10000);
 
 // 2️⃣ Click nút download (CLICK WRAPPER, KHÔNG CLICK SVG)
 await page.click('.icon_wrapper > div.filter:not(.ht-drop-down)');
