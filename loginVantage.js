@@ -10,6 +10,61 @@ function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+async function switchToVietnamese(page) {
+    try {
+        console.log('🌐 Đang mở menu ngôn ngữ...');
+
+        // 1️⃣ Click icon quả cầu ngôn ngữ
+        const opened = await page.evaluate(() => {
+            const btn = document.querySelector('div.lang[role="button"]');
+            if (btn) {
+                btn.scrollIntoView({ block: 'center' });
+                btn.click();
+                return true;
+            }
+            return false;
+        });
+
+        if (!opened) {
+            throw new Error('Không tìm thấy nút chuyển ngôn ngữ');
+        }
+
+        await sleep(1000);
+
+        // 2️⃣ Chọn "Tiếng Việt" hoặc "Vietnamese"
+        const selected = await page.evaluate(() => {
+            const keywords = ['tiếng việt', 'vietnamese'];
+
+            const items = Array.from(document.querySelectorAll('span'));
+            const lang = items.find(el => {
+                const text = (el.innerText || '').toLowerCase().trim();
+                return keywords.includes(text);
+            });
+
+            if (lang) {
+                lang.scrollIntoView({ block: 'center' });
+                lang.click();
+                return true;
+            }
+            return false;
+        });
+
+        if (!selected) {
+            throw new Error('Không tìm thấy tùy chọn Tiếng Việt');
+        }
+
+        console.log('🇻🇳 Đã chuyển sang Tiếng Việt');
+        await sleep(2000);
+        return true;
+
+    } catch (err) {
+        console.error('❌ Lỗi switchToVietnamese:', err.message);
+        return false;
+    }
+}
+
+
+
 /* ================= GUIDE ================= */
 
 async function skipVantageGuides(page, maxSteps = 3) {
@@ -39,7 +94,7 @@ async function safeGotoUntilLoginPageReady(page, url, maxRetry = 15) {
         try {
             await page.goto(url, {
                 waitUntil: 'domcontentloaded',
-                timeout: 60000
+                timeout: 90000,
             });
 
             // 🧠 ĐỢI LOGO VANTAGE (DẤU HIỆU TRANG LOGIN LOAD THẬT)
@@ -134,6 +189,8 @@ async function loginVantage(page) {
     } catch {}
 
     await sleep(3000);
+
+    await switchToVietnamese(page);
 
     // 5️⃣ Click "Nhận Hoa Hồng"
     try {

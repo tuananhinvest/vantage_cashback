@@ -86,7 +86,7 @@ async function startRebateTransfer(chatId) {
         throw err;
     }
 
-    await sleep(15000);
+    await sleep(90000);
 
     browser.close();
     // KHÔNG đóng browser để user còn confirm / debug

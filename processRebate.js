@@ -202,7 +202,7 @@ async function processRebate() {
     await sendFile(
         USER_ID,
         OUTPUT_CSV,
-        `💰 *Tổng thưởng hôm nay*: ${totalUSD.toFixed(2)}$`
+        `💰 Tổng thưởng: ${totalUSD.toFixed(2)}$`
     );
 
     await sendMessage(

@@ -208,14 +208,20 @@ async function getRebateReport(page) {
         await page.evaluate(() => window.scrollBy(0, 500));
 
         const switched = await page.evaluate(() => {
-            const items = Array.from(document.querySelectorAll('.ht-switcher__item'));
-            const tab = items.find(el => el.innerText.trim() === 'Tài Khoản');
-            if (tab) {
-                tab.click();
-                return true;
-            }
-            return false;
-        });
+        const labels = ['Tài Khoản', 'Account'];
+    
+        const items = Array.from(document.querySelectorAll('.ht-switcher__item'));
+        const tab = items.find(el => 
+            labels.includes(el.innerText.trim())
+        );
+    
+        if (tab) {
+            tab.click();
+            return true;
+        }
+        return false;
+    });
+    
 
         if (!switched) throw new Error('Không tìm thấy tab Tài Khoản');
 
@@ -239,27 +245,27 @@ async function getRebateReport(page) {
     console.log('⬇️ Bắt đầu tải file rebate...');
     // ===== CLICK DOWNLOAD ĐƠN GIẢN =====
 
-// 1️⃣ Scroll xuống để nút download nằm trong viewport
-await page.evaluate(() => {
-    const btn = document.querySelector(
-        '.icon_wrapper > div.filter:not(.ht-drop-down)'
-    );
-    if (btn) {
-        btn.scrollIntoView({ block: 'center' });
-    }
-});
-
-console.log('📜 Đã cuộn tới nút download');
-
-// đợi UI ổn định
-await sleep(10000);
-
-// 2️⃣ Click nút download (CLICK WRAPPER, KHÔNG CLICK SVG)
-await page.click('.icon_wrapper > div.filter:not(.ht-drop-down)');
-
-console.log('⬇️ Đã click nút tải file');
+    // 1️⃣ Scroll xuống để nút download nằm trong viewport
+    await page.evaluate(() => {
+        const btn = document.querySelector(
+            '.icon_wrapper > div.filter:not(.ht-drop-down)'
+        );
+        if (btn) {
+            btn.scrollIntoView({ block: 'center' });
+        }
+    });
     
-
+    console.log('📜 Đã cuộn tới nút download');
+    
+    // đợi UI ổn định
+    await sleep(10000);
+    
+    // 2️⃣ Click nút download (CLICK WRAPPER, KHÔNG CLICK SVG)
+    await page.click('.icon_wrapper > div.filter:not(.ht-drop-down)');
+    
+    console.log('⬇️ Đã click nút tải file');
+        
+    
     console.log('⏳ Đợi 15 giây để Chrome tải file...');
     await sleep(15000);
 
