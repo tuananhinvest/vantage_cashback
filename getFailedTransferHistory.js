@@ -1,3 +1,4 @@
+// checkFailedTransferHistory.js
 const puppeteer = require('puppeteer');
 const fs = require('fs');
 const path = require('path');
@@ -21,7 +22,7 @@ function getTodayVN() {
 
 async function checkFailedTransferHistory() {
     const browser = await puppeteer.launch({
-        headless: false, // đổi true khi chạy server
+        headless: false,
         args: [
             '--no-sandbox',
             '--disable-setuid-sandbox',
@@ -36,8 +37,13 @@ async function checkFailedTransferHistory() {
     page.setDefaultTimeout(60000);
 
     const today = getTodayVN();
-    let rejectedRows = [];
-    let pendingRows = [];
+
+    const rejectedRows = [];
+    const pendingRows = [];
+
+    // 🔑 SET DÙNG ĐỂ CHỐNG TRÙNG
+    const uniqueKeys = new Set();
+
     let csvPath = null;
 
     try {
@@ -50,12 +56,11 @@ async function checkFailedTransferHistory() {
             timeout: 120000
         });
 
-        // đóng popup nếu có
         try { await page.keyboard.press('Escape'); } catch {}
         await sleep(3000);
 
-        /* ================= CLICK TAB (JS CLICK) ================= */
-        await page.waitForSelector('#tab-transferHistory', { timeout: 20000 });
+        /* ================= CLICK TAB ================= */
+        await page.waitForSelector('#tab-transferHistory', { timeout: 60000 });
 
         await page.evaluate(() => {
             const tab = document.querySelector('#tab-transferHistory');
@@ -71,7 +76,6 @@ async function checkFailedTransferHistory() {
         while (!stopAll) {
             await page.waitForSelector('tr.el-table__row', { timeout: 20000 });
 
-            // lấy dữ liệu table bằng evaluate (KHÔNG HANDLE)
             const visibleRows = await page.$$eval('tr.el-table__row', rows =>
                 rows.map(row => {
                     const cells = row.querySelectorAll('td .cell');
@@ -83,19 +87,24 @@ async function checkFailedTransferHistory() {
                         amount: (cells[3]?.innerText || '')
                             .replace(/[$\s]/g, '')
                             .trim(),
-                        status: (cells[4]?.innerText || '').trim() // ← QUAN TRỌNG
+                        status: (cells[4]?.innerText || '').trim()
                     };
                 })
             );
-            
-            for (const row of visibleRows) {
-                if (!row.date) continue;      // bỏ row rác
-                if (!row.status) continue;    // bỏ row rác
 
+            for (const row of visibleRows) {
+                if (!row.date || !row.status) continue;
+
+                // ❌ qua ngày khác thì dừng
                 if (row.date !== today) {
                     stopAll = true;
                     break;
                 }
+
+                // 🔑 TẠO KEY CHỐNG TRÙNG
+                const key = `${row.date}|${row.targetAccount}|${row.amount}|${row.status}`;
+                if (uniqueKeys.has(key)) continue;
+                uniqueKeys.add(key);
 
                 if (row.status.includes('Từ Chối')) {
                     rejectedRows.push(row);
@@ -108,11 +117,9 @@ async function checkFailedTransferHistory() {
 
             if (stopAll) break;
 
-            // kiểm tra có trang tiếp không
             const hasNext = await page.$('button.btn-next:not([disabled])');
             if (!hasNext) break;
 
-            // CLICK NEXT BẰNG JS
             await page.evaluate(() => {
                 document
                     .querySelector('button.btn-next:not([disabled])')
