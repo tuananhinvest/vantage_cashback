@@ -124,6 +124,17 @@ async function syncVantageCustomers() {
     }
 }
 
+/* ================= CRON ================= */
+
+cron.schedule(
+    '00 9 * * *',
+    async () => {
+        console.log('⏰ Cron kích hoạt get UID');
+        await syncVantageCustomers();
+    },
+    { timezone: 'Asia/Ho_Chi_Minh' }
+);
+
 /* ================= EXPORT ================= */
 
 module.exports = {
