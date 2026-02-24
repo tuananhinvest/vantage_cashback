@@ -3,6 +3,7 @@ const puppeteer = require('puppeteer');
 const fs = require('fs');
 const path = require('path');
 require('dotenv').config();
+const cron = require('node-cron');
 
 const { loginVantage } = require('./loginVantage');
 
@@ -157,5 +158,16 @@ async function checkFailedTransferHistory() {
         await browser.close();
     }
 }
+
+/* ================= CRON ================= */
+
+cron.schedule(
+    '00 13 * * *',
+    async () => {
+        console.log('⏰ Cron kích hoạt check');
+        await checkFailedTransferHistory();
+    },
+    { timezone: 'Asia/Ho_Chi_Minh' }
+);
 
 module.exports = { checkFailedTransferHistory };

@@ -174,19 +174,38 @@ function isWithinLastNDays(dateStr, days = 2) {
 }
 
 async function CentAccountMapping(rows) {
-    console.log('🔍 Bắt đầu dò tài khoản USC mới (2 ngày gần nhất)');
+    console.log('🔍 Dò tất cả tài khoản của user mới (2 ngày gần nhất)');
 
+    const recentUsers = new Set();
     const userMap = new Map();
 
-    // 1️⃣ GOM DATA THEO USER ID
+    // 1️⃣ TÌM USER TẠO TRONG 2 NGÀY
     for (let i = 1; i < rows.length; i++) {
-        const createdAt = rows[i][0];              // A - Ngày tạo
-        const userId = String(rows[i][1] || '').trim(); // B - User ID
-        const account = String(rows[i][2] || '').trim(); // C - Account
-        const currency = String(rows[i][9] || '').trim(); // J - Currency
+        const createdAt = rows[i][0];              // A
+        const userId = String(rows[i][1] || '').trim(); // B
+
+        if (!userId) continue;
+
+        if (isWithinLastNDays(createdAt, 2)) {
+            recentUsers.add(userId);
+        }
+    }
+
+    if (recentUsers.size === 0) {
+        console.log('⚠️ Không có user mới trong 2 ngày');
+        return 0;
+    }
+
+    console.log(`🆕 Tìm thấy ${recentUsers.size} user mới`);
+
+    // 2️⃣ GOM TẤT CẢ ACCOUNT CỦA CÁC USER ĐÓ
+    for (let i = 1; i < rows.length; i++) {
+        const userId = String(rows[i][1] || '').trim();
+        const account = String(rows[i][2] || '').trim();
+        const currency = String(rows[i][9] || '').trim();
 
         if (!userId || !account || !currency) continue;
-        if (!isWithinLastNDays(createdAt, 2)) continue;
+        if (!recentUsers.has(userId)) continue;
 
         if (!userMap.has(userId)) {
             userMap.set(userId, {
@@ -204,37 +223,34 @@ async function CentAccountMapping(rows) {
         }
     }
 
-    // 2️⃣ MAP USC → USD + XOÁ CENT TRONG DB
+    // 3️⃣ MAP USC → USD + XOÁ CENT
     let totalMapped = 0;
 
     for (const [userId, data] of userMap.entries()) {
         if (!data.usdAccounts.length || !data.uscAccounts.length) continue;
 
-        const usdAccount = data.usdAccounts[0]; // lấy USD đầu tiên
+        const usdAccount = data.usdAccounts[0];
 
         for (const uscAccount of data.uscAccounts) {
-            // 🔁 lưu mapping USC → USD
             await upsertReplaceAccount(uscAccount, usdAccount);
-
-            // ❌ XOÁ USC KHỎI BẢNG vantage_cent
             await deleteCentAccount(uscAccount);
 
             totalMapped++;
 
             console.log(
-                `🔁 MAP USC → USD | User ${userId}: ${uscAccount} → ${usdAccount} (đã xoá khỏi vantage_cent)`
+                `🔁 MAP USC → USD | User ${userId}: ${uscAccount} → ${usdAccount}`
             );
         }
     }
 
-    console.log(`✅ Tìm & xử lý ${totalMapped} tài khoản USC`);
+    console.log(`✅ Hoàn tất xử lý ${totalMapped} tài khoản USC`);
     return totalMapped;
 }
 
 
 
 cron.schedule(
-    '15 9 * * *',
+    '30 9 * * *',
     async () => {
         console.log('⏰ Cron kích hoạt CentAccountMapping (09:15)');
         await runCentAccountMapping();
@@ -245,7 +261,7 @@ cron.schedule(
 /* ================= CRON ================= */
 
 cron.schedule(
-    '00 9 * * *',
+    '15 9 * * *',
     async () => {
         console.log('⏰ Cron kích hoạt get UID');
         await syncVantageCustomers();
