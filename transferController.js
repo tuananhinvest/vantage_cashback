@@ -35,6 +35,52 @@ function waitForOTP(chatId, timeoutMs = 120000) {
     });
 }
 
+async function startRebateTransferSingle(chatId, csvPath) {
+    const browser = await puppeteer.launch({
+        headless: false,
+        defaultViewport: null,
+        args: ['--start-maximized', '--no-sandbox']
+    });
+
+    const page = await browser.newPage();
+
+    try {
+        // ===== LOGIN =====
+        await loginVantage(page);
+
+        // ===== UPLOAD FILE =====
+        await transferRebate(page, csvPath);
+
+        await sleep(3000);
+
+        try { await page.keyboard.press('Escape'); } catch {}
+        await sleep(2000);
+
+        // ===== YÊU CẦU OTP =====
+        await sendMessage(
+            chatId,
+            '📧 *Nhập mã OTP từ email*',
+            { parse_mode: 'Markdown' }
+        );
+
+        const verificationCode = await waitForOTP(chatId);
+
+        console.log('🔐 OTP:', verificationCode);
+
+        // ===== INPUT OTP =====
+        await inputVerificationCode(page, verificationCode);
+
+        await sleep(5000);
+
+        await sleep(2*60*1000);
+        await sendMessage(chatId,'✅ Chuyển tiền thành công',{ parse_mode: 'Markdown' });
+
+    } catch (err) {
+        throw err;
+    }
+
+    await browser.close();
+}
 
 async function startRebateTransfer(chatId) {
     const today = new Date().toISOString().slice(0, 10);
@@ -78,7 +124,11 @@ async function startRebateTransfer(chatId) {
 
         // ===== 5. ĐIỀN CODE VÀO WEB =====
         await inputVerificationCode(page, verificationCode);
+
         // Bước submit cuối 
+        await sleep(2*60*1000);
+        await sendMessage(chatId,'✅ Chuyển tiền thành công',{ parse_mode: 'Markdown' });
+
 
     } catch (err) {
         console.error('❌ Lỗi chuyển tiền:', err.message);
@@ -86,12 +136,12 @@ async function startRebateTransfer(chatId) {
         throw err;
     }
 
-    await sleep(90000);
+    await sleep(10*1000);
 
     browser.close();
     // KHÔNG đóng browser để user còn confirm / debug
 }
 
 module.exports = {
-    startRebateTransfer
+    startRebateTransfer, startRebateTransferSingle
 };

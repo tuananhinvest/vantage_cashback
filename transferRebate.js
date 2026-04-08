@@ -24,7 +24,7 @@ async function inputVerificationCode(page, code) {
     console.log('✅ Đã nhập mã code');
     await sendMessage(
             USER_ID,
-            '✅ Đã nhập mã code thành công',
+            '✅ Đã nhập mã code thành công, đang thực hiện chuyển tiền',
             { parse_mode: 'Markdown' }
         );
 
@@ -108,7 +108,6 @@ async function inputVerificationCode(page, code) {
     });
     
     console.log('🎉 Đã xác nhận chuyển tiền');
-    await sendMessage(USER_ID, '✅ Đã thưởng thành công ngày hôm nay. Ấn /check sau vài tiếng để kiểm tra các lệnh chuyển tiền thất bại', { parse_mode: 'Markdown' });
 }
 
 async function transferRebate(page, csvPath) {

@@ -187,33 +187,65 @@ async function processRebate() {
 
     /* ================= EXPORT CSV ================= */
 
-    const OUTPUT_CSV = path.join(__dirname, `${today}.csv`);
+    /* ================= EXPORT CSV (SPLIT 50 ROWS) ================= */
 
-    const lines = Array.from(accountTotalMap.entries())
-        .map(([account, amount]) => `${account},${amount.toFixed(2)}`)
-        .join('\n');
-
-    fs.writeFileSync(OUTPUT_CSV, lines, 'utf8');
-
-    console.log('✅ Đã xuất file CSV:', OUTPUT_CSV);
-    console.log(`📊 Tổng số tài khoản: ${accountTotalMap.size}`);
+    const entries = Array.from(accountTotalMap.entries());
+    
+    const MAX_ROWS = 50;
+    const chunks = [];
+    
+    for (let i = 0; i < entries.length; i += MAX_ROWS) {
+        chunks.push(entries.slice(i, i + MAX_ROWS));
+    }
+    
+    const csvFiles = [];
+    
+    for (let i = 0; i < chunks.length; i++) {
+        const chunk = chunks[i];
+    
+        const fileName =
+            chunks.length === 1
+                ? `${today}.csv`
+                : `${today}_part${i + 1}.csv`;
+    
+        const filePath = path.join(__dirname, fileName);
+    
+        const lines = chunk
+            .map(([account, amount]) => `${account},${amount.toFixed(2)}`)
+            .join('\n');
+    
+        fs.writeFileSync(filePath, lines, 'utf8');
+    
+        csvFiles.push(filePath);
+    
+        console.log(`✅ Đã xuất file: ${fileName} (${chunk.length} dòng)`);
+    }
+    
+    console.log(`📊 Tổng số file tạo: ${csvFiles.length}`);
+    console.log(`📊 Tổng số tài khoản: ${entries.length}`);
     console.log(`💰 Tổng hoa hồng USD: ${totalUSD.toFixed(2)}`);
-
-    await sendFile(
-        USER_ID,
-        OUTPUT_CSV,
-        `💰 Tổng thưởng: ${totalUSD.toFixed(2)}$`
-    );
-
+    
+    /* ===== GỬI TELEGRAM ===== */
+    
+    for (let i = 0; i < csvFiles.length; i++) {
+        const file = csvFiles[i];
+    
+        await sendFile(
+            USER_ID,
+            file,
+            `👉 Click /thuong${i + 1} để chuyển tiền`
+        );
+    }
+    
     await sendMessage(
         USER_ID,
-        '👉 Click /thuong để thực hiện thưởng',
+        `📦 Đã chia thành ${csvFiles.length} file (tối đa 50 dòng/file)\n💰 Tổng thưởng: ${totalUSD.toFixed(2)}$`,
         { parse_mode: 'Markdown' }
     );
-
+    
     return {
         success: true,
-        csvFile: OUTPUT_CSV,
+        csvFiles, // 🔥 MẢNG FILE
         totalAccounts: accountTotalMap.size,
         totalUSD: Number(totalUSD.toFixed(2))
     };

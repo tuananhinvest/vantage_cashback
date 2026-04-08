@@ -5,7 +5,7 @@ const path = require('path');
 const { getBot } = require('./telegramBotInstance');
 const bot = getBot(true); // bot chính khởi tạo polling
 const { isUserAllowed } = require('./userAccess');
-const { startRebateTransfer } = require('./transferController');
+const { startRebateTransfer, startRebateTransferSingle } = require('./transferController');
 const { checkFailedTransferHistory } = require('./getFailedTransferHistory');
 const { startRebateTransferReject } = require('./transferRejectedController');
 const { syncVantageCustomers } = require('./getUID');
@@ -55,8 +55,10 @@ bot.on('message', (msg) => {
   console.log(`[${chatId}] ${text}`);
 });
 
-bot.onText(/\/thuong/, async (msg) => {
+bot.onText(/\/thuong(\d+)?(?:@[\w_]+)?/, async (msg, match) => {
     const chatId = msg.chat.id;
+
+    console.log('🔥 Nhận lệnh:', msg.text);
 
     if (!isUserAllowed(msg)) {
         await bot.sendMessage(chatId, '❌ Bạn không có quyền sử dụng lệnh này.');
@@ -64,32 +66,40 @@ bot.onText(/\/thuong/, async (msg) => {
     }
 
     const today = getTodayString();
-    const csvPath = path.join(__dirname, `${today}.csv`);
+    const part = match[1];
 
-    // ===== CHECK FILE CSV =====
+    let fileName;
+
+    if (!part) {
+        fileName = `${today}.csv`;
+    } else {
+        fileName = `${today}_part${part}.csv`;
+    }
+
+    const csvPath = path.join(__dirname, fileName);
+
+    console.log('📂 File cần xử lý:', fileName);
+
     if (!fs.existsSync(csvPath)) {
         await bot.sendMessage(
             chatId,
-            '⚠️ *Chưa có file thưởng ngày hôm nay*\n\n👉 Gõ `/start` để bắt đầu lấy dữ liệu',
-            { parse_mode: 'Markdown' }
+            `⚠️ Không tìm thấy file: ${fileName}`
         );
         return;
     }
 
     await bot.sendMessage(
         chatId,
-        '✅ *Đã tìm thấy dữ liệu thưởng ngày hôm nay*\n🚀 Bắt đầu chuyển tiền...',
-        { parse_mode: 'Markdown' }
+        `🚀 Đang xử lý file: ${fileName}`
     );
 
-    // ===== TIẾP TỤC FLOW =====
     try {
-        await startRebateTransfer(chatId);
+        await startRebateTransferSingle(chatId, csvPath);
     } catch (err) {
-        console.error(err);
+        console.error('❌ Lỗi transfer:', err);
         await bot.sendMessage(
             chatId,
-            `❌ Lỗi khi chuyển tiền:\n${err.message}`
+            `❌ Lỗi:\n${err.message}`
         );
     }
 });
