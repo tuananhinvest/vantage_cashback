@@ -130,7 +130,7 @@ async function transferRebate(page, csvPath) {
     const clicked = await page.evaluate(() => {
         const tabs = Array.from(document.querySelectorAll('.el-tabs__item'));
         const target = tabs.find(el =>
-            el.innerText.includes('Chuyển hoàn tiền cho người khác')
+            el.innerText.includes('Chuyển khoản tiền chiết khấu cho người khác')
         );
     
         if (!target) return false;
