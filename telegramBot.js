@@ -118,6 +118,7 @@ bot.onText(/\/check/, async (msg) => {
         const {
             rejectedRows,
             pendingRows,
+            processingRows,
             csvPath
         } = await checkFailedTransferHistory();
 
@@ -139,10 +140,18 @@ bot.onText(/\/check/, async (msg) => {
             await bot.sendMessage(chatId, msgText);
         }
 
-        if (rejectedRows.length === 0 && pendingRows.length === 0) {
+        if (processingRows.length > 0) {
+            const msgText = processingRows.map(r =>
+                `⚠️ Đang Xử Lý\n• TK: ${r.targetAccount}\n• ${r.amount}$`
+            ).join('\n\n');
+
+            await bot.sendMessage(chatId, msgText);
+        }
+
+        if (rejectedRows.length === 0 && pendingRows.length === 0 && processingRows.length === 0) {
             await bot.sendMessage(
                 chatId,
-                '✅ Không có lệnh Từ chối / Chưa thanh toán hôm nay'
+                '✅ Không có lệnh Từ chối / Chưa thanh toán / Đang Xử Lý hôm nay'
             );
         }
 

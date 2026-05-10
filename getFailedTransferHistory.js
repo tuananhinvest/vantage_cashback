@@ -41,6 +41,7 @@ async function checkFailedTransferHistory() {
 
     const rejectedRows = [];
     const pendingRows = [];
+    const processingRows = [];
 
     // 🔑 SET DÙNG ĐỂ CHỐNG TRÙNG
     const uniqueKeys = new Set();
@@ -114,6 +115,10 @@ async function checkFailedTransferHistory() {
                 if (row.status.includes('Chưa thanh toán')) {
                     pendingRows.push(row);
                 }
+
+                if (row.status.includes('Đang Xử Lý')) {
+                    processingRows.push(row);
+                }
             }
 
             if (stopAll) break;
@@ -148,6 +153,7 @@ async function checkFailedTransferHistory() {
             today,
             rejectedRows,
             pendingRows,
+            processingRows,
             csvPath
         };
 
