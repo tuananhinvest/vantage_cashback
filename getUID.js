@@ -23,7 +23,7 @@ async function syncVantageCustomers() {
     console.log('🚀 Bắt đầu sync customers Vantage');
 
     const browser = await puppeteer.launch({
-        headless: true,
+        headless: false,
         args: [
             '--no-sandbox',
             '--disable-setuid-sandbox',

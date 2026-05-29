@@ -119,6 +119,7 @@ bot.onText(/\/check/, async (msg) => {
             rejectedRows,
             pendingRows,
             processingRows,
+            pending2Rows,
             csvPath
         } = await checkFailedTransferHistory();
 
@@ -148,10 +149,18 @@ bot.onText(/\/check/, async (msg) => {
             await bot.sendMessage(chatId, msgText);
         }
 
+        if (pending2Rows.length > 0) {
+            const msgText = pending2Rows.map(r =>
+                `⚠️ Bị từ chối\n• TK: ${r.targetAccount}\n• ${r.amount}$`
+            ).join('\n\n');
+
+            await bot.sendMessage(chatId, msgText);
+        }
+
         if (rejectedRows.length === 0 && pendingRows.length === 0 && processingRows.length === 0) {
             await bot.sendMessage(
                 chatId,
-                '✅ Không có lệnh Từ chối / Chưa thanh toán / Đang Xử Lý hôm nay'
+                '✅ Không có lệnh Từ chối / Chưa thanh toán / Đang Xử Lý / Bị từ chối hôm nay'
             );
         }
 
