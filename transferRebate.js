@@ -55,7 +55,7 @@ async function inputVerificationCode(page, code) {
     console.log('📨 Chuẩn bị click nút GỬI (native mouse)...');
     // lấy wrapper (KHÔNG phải button)
     const submitWrapper = await page.waitForSelector(
-        '.submitBtn_block',
+        '.transfer-to-others__submit button',
         { timeout: 15000 }
     );
     await sleep(500);

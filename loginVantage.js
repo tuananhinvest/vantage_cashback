@@ -192,7 +192,7 @@ async function loginVantage(page) {
 
     await switchToVietnamese(page);
 
-    // 5️⃣ Click "Nhận Hoa Hồng"
+    // 5️⃣ Click "Yêu cầu chiết khấu"
     try {
         const applyBtn = await page.waitForSelector(
             'button[data-testid="applyRebate"]',
@@ -217,9 +217,9 @@ async function loginVantage(page) {
             box.y + box.height / 2
         );
 
-        console.log('✅ Đã click "Nhận Hoa Hồng"');
+        console.log('✅ Đã click "Yêu cầu chiết khấu"');
     } catch (err) {
-        console.error('❌ Không click được "Nhận Hoa Hồng":', err.message);
+        console.error('❌ Không click được "Yêu cầu chiết khấu":', err.message);
     }
 
     await sleep(3000);

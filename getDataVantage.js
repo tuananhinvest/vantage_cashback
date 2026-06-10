@@ -138,6 +138,13 @@ async function getRebateReport(page) {
     await sleep(5000);
 
     /* ===== 1. CHỌN THỜI GIAN ===== */
+    await skipVantageGuides(page, 3);
+
+    try {
+        await page.keyboard.press('Escape');
+        console.log('⌨️ Đã gửi ESC để đóng popup');
+    } catch {}
+
     try {
         const shortcutSelect = await page.waitForSelector(
             'div[data-testid="shortcut"]',
