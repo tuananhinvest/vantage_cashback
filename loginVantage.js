@@ -66,21 +66,55 @@ async function switchToVietnamese(page) {
 
 
 /* ================= GUIDE ================= */
-
 async function skipVantageGuides(page, maxSteps = 3) {
-    console.log('🧭 Kiểm tra gợi ý hướng dẫn Vantage...');
+    console.log('🧭 Kiểm tra và xử lý gợi ý hướng dẫn Vantage...');
 
     for (let i = 0; i < maxSteps; i++) {
         try {
-            await page.waitForSelector('button.driver-close-btn', {
-                timeout: 3000,
-                visible: true
+            const popoverSelector = '#driver-popover-content';
+            await page.waitForSelector(popoverSelector, { timeout: 3000, visible: true });
+            await new Promise(resolve => setTimeout(resolve, 500));
+
+            const isClicked = await page.evaluate(() => {
+                const popover = document.querySelector('#driver-popover-content');
+                if (!popover) return false;
+
+                const buttons = popover.querySelectorAll('.driver-popover-navigation-btns button');
+                let targetBtn = null;
+
+                for (let btn of buttons) {
+                    if (btn.textContent.trim() === 'Bỏ qua' && !btn.disabled) {
+                        targetBtn = btn;
+                        break;
+                    }
+                }
+
+                if (targetBtn) {
+                    // Tạo chuỗi sự kiện chuột đầy đủ để đánh lừa Driver.js
+                    const mouseEvents = ['mousedown', 'mouseup', 'click'];
+                    mouseEvents.forEach(eventType => {
+                        const event = new MouseEvent(eventType, {
+                            bubbles: true,
+                            cancelable: true,
+                            view: window
+                        });
+                        targetBtn.dispatchEvent(event);
+                    });
+                    return true;
+                }
+                return false;
             });
-            await page.click('button.driver-close-btn');
-            console.log(`⏭️ Đã bỏ qua gợi ý lần ${i + 1}`);
-            await page.waitForTimeout(800);
-        } catch {
-            console.log('ℹ️ Không còn gợi ý để bỏ qua');
+
+            if (isClicked) {
+                console.log(`⏭️ Đã kích hoạt chuỗi sự kiện click "Bỏ qua" lần ${i + 1}`);
+            } else {
+                console.log('⚠️ Không tìm thấy nút "Bỏ qua" để giả lập sự kiện.');
+                break;
+            }
+
+            await new Promise(resolve => setTimeout(resolve, 1500));
+        } catch (error) {
+            console.log('ℹ️ Kết thúc: Hướng dẫn đã được đóng.');
             break;
         }
     }
@@ -195,7 +229,7 @@ async function loginVantage(page) {
     // 5️⃣ Click "Yêu cầu chiết khấu"
     try {
         const applyBtn = await page.waitForSelector(
-            'button[data-testid="applyRebate"]',
+            '[data-testid="applyRebate"]',
             { visible: true, timeout: 15000 }
         );
 

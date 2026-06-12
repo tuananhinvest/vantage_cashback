@@ -100,20 +100,53 @@ function getLatestValidFile(dir) {
 /* ================= GUIDE ================= */
 
 async function skipVantageGuides(page, maxSteps = 3) {
-    console.log('🧭 Kiểm tra gợi ý hướng dẫn Vantage...');
+    console.log('🧭 Kiểm tra và xử lý gợi ý hướng dẫn Vantage...');
 
     for (let i = 0; i < maxSteps; i++) {
         try {
-            await page.waitForSelector('button.driver-close-btn', {
+            // 1. Chờ cái khung Popover tổng xuất hiện
+            const popoverSelector = '#driver-popover-content';
+            await page.waitForSelector(popoverSelector, {
                 timeout: 3000,
                 visible: true
             });
 
-            await page.click('button.driver-close-btn');
-            console.log(`⏭️ Đã bỏ qua gợi ý lần ${i + 1}`);
-            await sleep(800);
-        } catch {
-            console.log('ℹ️ Không còn gợi ý để bỏ qua');
+            // Đợi một chút ngắn để popup render xong hoàn toàn text
+            await new Promise(resolve => setTimeout(resolve, 300));
+
+            // 2. Chọc vào nội dung để tìm nút có chữ "Bỏ qua"
+            const clickResult = await page.evaluate((popoverId) => {
+                const popover = document.querySelector(popoverId);
+                if (!popover) return { success: false, reason: 'Không tìm thấy popover' };
+
+                // Lấy tất cả các nút bấm có thể click được trong footer điều hướng
+                const buttons = popover.querySelectorAll('.driver-popover-navigation-btns button');
+                
+                for (let btn of buttons) {
+                    const btnText = btn.textContent.trim();
+                    
+                    // Nếu tìm thấy nút chứa chữ "Bỏ qua" và nút đó KHÔNG bị disabled
+                    if (btnText === 'Bỏ qua' && !btn.disabled) {
+                        btn.click(); // Click bằng JS thuần
+                        return { success: true, text: btnText, className: btn.className };
+                    }
+                }
+                
+                return { success: false, reason: 'Không tìm thấy nút "Bỏ qua" khả dụng' };
+            }, popoverSelector);
+
+            if (clickResult.success) {
+                console.log(`⏭️ Đã click nút "${clickResult.text}" (Class: ${clickResult.className.split(' ')[0]}) ở lần quét thứ ${i + 1}`);
+            } else {
+                console.log(`⚠️ ${clickResult.reason}`);
+                break;
+            }
+
+            // Đợi 1.2 giây để popup đóng hẳn và DOM ổn định trước khi quét lượt tiếp theo
+            await new Promise(resolve => setTimeout(resolve, 1200));
+            
+        } catch (error) {
+            console.log('ℹ️ Hoàn thành: Không còn popover hướng dẫn nào xuất hiện nữa.');
             break;
         }
     }
