@@ -1,5 +1,7 @@
 // checkFailedTransferHistory.js
-const puppeteer = require('puppeteer');
+const puppeteer = require('puppeteer-extra');
+const StealthPlugin = require('puppeteer-extra-plugin-stealth');
+puppeteer.use(StealthPlugin());
 const fs = require('fs');
 const path = require('path');
 require('dotenv').config();
@@ -23,16 +25,17 @@ function getTodayVN() {
 
 async function checkFailedTransferHistory() {
     const browser = await puppeteer.launch({
-        headless: false,
-        args: [
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage',
-            '--disable-gpu',
-            '--start-maximized'
-        ],
-        defaultViewport: null
-    });
+            headless: false, // Bắt buộc phải để false khi vượt Cloudflare
+            defaultViewport: null,
+            args: [
+                "--no-sandbox",
+                "--disable-setuid-sandbox",
+                "--start-maximized",
+                // Thêm các cờ giúp giảm tỷ lệ bị Cloudflare nghi ngờ
+                "--disable-blink-features=AutomationControlled", 
+                "--lang=vi-VN,vi"
+            ],
+        });
 
     const page = await browser.newPage();
     page.setDefaultTimeout(60000);

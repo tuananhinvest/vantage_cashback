@@ -1,4 +1,6 @@
-const puppeteer = require('puppeteer');
+const puppeteer = require('puppeteer-extra');
+const StealthPlugin = require('puppeteer-extra-plugin-stealth');
+puppeteer.use(StealthPlugin());
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
@@ -23,15 +25,17 @@ async function syncVantageCustomers() {
     console.log('🚀 Bắt đầu sync customers Vantage');
 
     const browser = await puppeteer.launch({
-        headless: false,
-        args: [
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage',
-            '--start-maximized'
-        ],
-        defaultViewport: null
-    });
+            headless: false, // Bắt buộc phải để false khi vượt Cloudflare
+            defaultViewport: null,
+            args: [
+                "--no-sandbox",
+                "--disable-setuid-sandbox",
+                "--start-maximized",
+                // Thêm các cờ giúp giảm tỷ lệ bị Cloudflare nghi ngờ
+                "--disable-blink-features=AutomationControlled", 
+                "--lang=vi-VN,vi"
+            ],
+        });
 
     const page = await browser.newPage();
 
