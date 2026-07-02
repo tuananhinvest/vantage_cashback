@@ -63,58 +63,55 @@ async function switchToVietnamese(page) {
     }
 }
 
-
-
 /* ================= GUIDE ================= */
 async function skipVantageGuides(page, maxSteps = 3) {
     console.log('🧭 Kiểm tra và xử lý gợi ý hướng dẫn Vantage...');
 
     for (let i = 0; i < maxSteps; i++) {
         try {
+            // 1. Chờ cái khung Popover tổng xuất hiện
             const popoverSelector = '#driver-popover-content';
-            await page.waitForSelector(popoverSelector, { timeout: 3000, visible: true });
-            await new Promise(resolve => setTimeout(resolve, 500));
-
-            const isClicked = await page.evaluate(() => {
-                const popover = document.querySelector('#driver-popover-content');
-                if (!popover) return false;
-
-                const buttons = popover.querySelectorAll('.driver-popover-navigation-btns button');
-                let targetBtn = null;
-
-                for (let btn of buttons) {
-                    if (btn.textContent.trim() === 'Bỏ qua' && !btn.disabled) {
-                        targetBtn = btn;
-                        break;
-                    }
-                }
-
-                if (targetBtn) {
-                    // Tạo chuỗi sự kiện chuột đầy đủ để đánh lừa Driver.js
-                    const mouseEvents = ['mousedown', 'mouseup', 'click'];
-                    mouseEvents.forEach(eventType => {
-                        const event = new MouseEvent(eventType, {
-                            bubbles: true,
-                            cancelable: true,
-                            view: window
-                        });
-                        targetBtn.dispatchEvent(event);
-                    });
-                    return true;
-                }
-                return false;
+            await page.waitForSelector(popoverSelector, {
+                timeout: 30000,
+                visible: true
             });
 
-            if (isClicked) {
-                console.log(`⏭️ Đã kích hoạt chuỗi sự kiện click "Bỏ qua" lần ${i + 1}`);
+            // Đợi một chút ngắn để popup render xong hoàn toàn text
+            await new Promise(resolve => setTimeout(resolve, 5000));
+
+            // 2. Chọc vào nội dung để tìm nút có chữ "Bỏ qua"
+            const clickResult = await page.evaluate((popoverId) => {
+                const popover = document.querySelector(popoverId);
+                if (!popover) return { success: false, reason: 'Không tìm thấy popover' };
+
+                // Lấy tất cả các nút bấm có thể click được trong footer điều hướng
+                const buttons = popover.querySelectorAll('.driver-popover-navigation-btns button');
+                
+                for (let btn of buttons) {
+                    const btnText = btn.textContent.trim();
+                    
+                    // Nếu tìm thấy nút chứa chữ "Bỏ qua" và nút đó KHÔNG bị disabled
+                    if (btnText === 'Bỏ qua' && !btn.disabled) {
+                        btn.click(); // Click bằng JS thuần
+                        return { success: true, text: btnText, className: btn.className };
+                    }
+                }
+                
+                return { success: false, reason: 'Không tìm thấy nút "Bỏ qua" khả dụng' };
+            }, popoverSelector);
+
+            if (clickResult.success) {
+                console.log(`⏭️ Đã click nút "${clickResult.text}" (Class: ${clickResult.className.split(' ')[0]}) ở lần quét thứ ${i + 1}`);
             } else {
-                console.log('⚠️ Không tìm thấy nút "Bỏ qua" để giả lập sự kiện.');
+                console.log(`⚠️ ${clickResult.reason}`);
                 break;
             }
 
-            await new Promise(resolve => setTimeout(resolve, 1500));
+            // Đợi 1.2 giây để popup đóng hẳn và DOM ổn định trước khi quét lượt tiếp theo
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            
         } catch (error) {
-            console.log('ℹ️ Kết thúc: Hướng dẫn đã được đóng.');
+            console.log('ℹ️ Hoàn thành: Không còn popover hướng dẫn nào xuất hiện nữa.');
             break;
         }
     }
@@ -170,19 +167,10 @@ async function loginVantage(page) {
         'Accept-Language': 'vi-VN,vi;q=0.9'
     });
 
-    //await page.evaluateOnNewDocument(() => {
-    //    Object.defineProperty(navigator, 'language', {
-    //        get: () => 'vi-VN'
-    //    });
-    //    Object.defineProperty(navigator, 'languages', {
-    //        get: () => ['vi-VN', 'vi']
-    //    });
-    //});
-
     // 1️⃣ Load trang
     await safeGotoUntilLoginPageReady(page, TARGET_URL, 10);
 
-    await sleep(2000);
+    await sleep(5000);
 
     // 2️⃣ Nếu chưa login → login mới
     if (page.url().includes(LOGIN_KEYWORD)) {
@@ -206,13 +194,68 @@ async function loginVantage(page) {
 
         await sleep(2000);
 
-        await Promise.all([
-            page.click('button[data-testid="login"]'),
-            page.waitForNavigation({ waitUntil: 'networkidle2' })
-        ]);
+        // --- ĐOẠN CODE SỬA LẠI: CLICK THỬ LẠI TỐI ĐA 4 LẦN ---
+        console.log('🔐 Bắt đầu nhấn nút đăng nhập...');
+        
+        const MAX_RETRIES = 5; // Số lần click tối đa
+        let isNavigated = false;
+
+        for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+            try {
+                console.log(`👉 Click nút Login lần thứ ${attempt}/${MAX_RETRIES}...`);
+                
+                // Thực hiện click vào nút login
+                await page.click('button[data-testid="login"]');
+
+                // Chờ 5 giây để xem trang có bắt đầu chuyển hướng hay không
+                // Nếu trang chuyển hướng thành công, URL sẽ không còn chứa LOGIN_KEYWORD nữa
+                await page.waitForFunction(
+                    (keyword) => !window.location.href.includes(keyword),
+                    { timeout: 7000 }, // Đợi tối đa 5 giây cho mỗi lần click
+                    LOGIN_KEYWORD
+                );
+
+                // Nếu chạy tới đây tức là waitForFunction thành công -> Đã qua trang mới!
+                console.log('🎉 Đã chuyển trang thành công!');
+                isNavigated = true;
+                break; // Thoát khỏi vòng lặp click, không bấm nữa
+
+            } catch (err) {
+                console.warn(`⚠️ Lần click thứ ${attempt} thất bại hoặc trang chưa kịp chuyển hướng. Chờ chút...`);
+                
+                // Kiểm tra lại một lần nữa bằng url thực tế cho chắc chắn
+                if (!page.url().includes(LOGIN_KEYWORD)) {
+                    console.log('🎉 Phát hiện URL đã thay đổi, dừng thử lại.');
+                    isNavigated = true;
+                    break;
+                }
+
+                // Nghỉ 1.5 giây trước khi bấm lại phát tiếp theo
+                if (attempt < MAX_RETRIES) {
+                    await sleep(1500); 
+                }
+            }
+        }
+
+        // Nếu qua 4 lần bấm mà vẫn kẹt ở trang login thì báo lỗi dừng chương trình
+        if (!isNavigated) {
+            throw new Error('❌ Đã thử click Login 4 lần nhưng trang web không phản hồi hoặc không chuyển hướng.');
+        }
+
+
+
+        //await Promise.all([
+        //    page.click('button[data-testid="login"]'),
+        //    page.waitForNavigation({ 
+        //        waitUntil: 'domcontentloaded', // Chỉ đợi HTML load xong
+        //        timeout: 60000 
+        //    })
+        //]);
 
         console.log('✅ Login thành công');
     }
+
+    await sleep(5000);
 
     // 3️⃣ Skip guide
     await skipVantageGuides(page, 3);
@@ -230,7 +273,7 @@ async function loginVantage(page) {
     try {
         const applyBtn = await page.waitForSelector(
             '[data-testid="applyRebate"]',
-            { visible: true, timeout: 15000 }
+            { visible: true, timeout: 10000 }
         );
 
         await applyBtn.evaluate(el =>

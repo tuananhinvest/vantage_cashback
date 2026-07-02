@@ -1,4 +1,6 @@
-const puppeteer = require('puppeteer');
+const puppeteer = require('puppeteer-extra');
+const StealthPlugin = require('puppeteer-extra-plugin-stealth');
+puppeteer.use(StealthPlugin());
 const cron = require('node-cron');
 require('dotenv').config();
 
@@ -14,27 +16,28 @@ function sleep(ms) {
 }
 
 /* ================= CORE FUNCTION ================= */
-
 async function runGetRebate() {
-    console.log('🚀 Bắt đầu chạy lấy thưởng');
+    console.log('🚀 Bắt đầu chạy lấy thưởng (Chế độ Stealth Mode)');
 
     const browser = await puppeteer.launch({
-        headless: false,
+        headless: false, // Bắt buộc phải để false khi vượt Cloudflare
         defaultViewport: null,
         args: [
             "--no-sandbox",
-            "--disable-gpu",
-            "--disable-dev-shm-usage",
             "--disable-setuid-sandbox",
-            "--no-first-run",
-            "--no-zygote",
             "--start-maximized",
-            "--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+            // Thêm các cờ giúp giảm tỷ lệ bị Cloudflare nghi ngờ
+            "--disable-blink-features=AutomationControlled", 
+            "--lang=vi-VN,vi"
         ],
-        defaultViewport: null,
     });
 
     const page = await browser.newPage();
+
+    // Loại bỏ hoàn toàn thuộc tính webdriver ngầm
+    await page.evaluateOnNewDocument(() => {
+        Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+    });
 
     try {
         await sendMessage(USER_ID, '🔫 Bắt đầu lấy dữ liệu thưởng sàn Vantage');
@@ -48,10 +51,7 @@ async function runGetRebate() {
         await sendMessage(USER_ID, '✅ Lấy dữ liệu thưởng thành công');
     } catch (err) {
         console.error('❌ Lỗi runGetRebate:', err.message);
-        await sendMessage(
-            USER_ID,
-            `❌ Lỗi khi lấy dữ liệu thưởng, click /start để bắt đầu lại`
-        );
+        await sendMessage(USER_ID, `❌ Lỗi khi lấy dữ liệu thưởng, click /start để bắt đầu lại`);
         throw err;
     } finally {
         await sleep(10000);
