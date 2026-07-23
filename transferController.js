@@ -1,5 +1,7 @@
 // transferController.js
-const puppeteer = require('puppeteer');
+const puppeteer = require('puppeteer-extra');
+const StealthPlugin = require('puppeteer-extra-plugin-stealth');
+puppeteer.use(StealthPlugin());
 const path = require('path');
 const fs = require('fs');
 const { getBotInstance } = require('./telegramBotInstance');
@@ -37,10 +39,17 @@ function waitForOTP(chatId, timeoutMs = 120000) {
 
 async function startRebateTransferSingle(chatId, csvPath) {
     const browser = await puppeteer.launch({
-        headless: false,
-        defaultViewport: null,
-        args: ['--start-maximized', '--no-sandbox']
-    });
+            headless: false, // Bắt buộc phải để false khi vượt Cloudflare
+            defaultViewport: null,
+            args: [
+                "--no-sandbox",
+                "--disable-setuid-sandbox",
+                "--start-maximized",
+                // Thêm các cờ giúp giảm tỷ lệ bị Cloudflare nghi ngờ
+                "--disable-blink-features=AutomationControlled", 
+                "--lang=vi-VN,vi"
+            ],
+        });
 
     const page = await browser.newPage();
 
