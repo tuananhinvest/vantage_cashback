@@ -1,4 +1,5 @@
 const puppeteer = require('puppeteer-extra');
+const { connect } = require('puppeteer-real-browser');
 const StealthPlugin = require('puppeteer-extra-plugin-stealth');
 puppeteer.use(StealthPlugin());
 const fs = require('fs');
@@ -24,20 +25,13 @@ function sleep(ms) {
 async function syncVantageCustomers() {
     console.log('🚀 Bắt đầu sync customers Vantage');
 
-    const browser = await puppeteer.launch({
-            headless: false, // Bắt buộc phải để false khi vượt Cloudflare
-            defaultViewport: null,
-            args: [
-                "--no-sandbox",
-                "--disable-setuid-sandbox",
-                "--start-maximized",
-                // Thêm các cờ giúp giảm tỷ lệ bị Cloudflare nghi ngờ
-                "--disable-blink-features=AutomationControlled", 
-                "--lang=vi-VN,vi"
-            ],
-        });
+    const { browser, page } = await connect({
+        headless: false,
+        turnstile: true, // Tự động xử lý tích chọn ô Cloudflare Turnstile
+        args: ['--start-maximized',"--no-sandbox","--disable-setuid-sandbox",],
+        connectOption: { defaultViewport: null }
+    });
 
-    const page = await browser.newPage();
 
     try {
         //await sendMessage(USER_ID, '🔄 Bắt đầu đồng bộ tài khoản Vantage');

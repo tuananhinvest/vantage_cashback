@@ -1,5 +1,6 @@
 // transferController.js
 const puppeteer = require('puppeteer-extra');
+const { connect } = require('puppeteer-real-browser');
 const StealthPlugin = require('puppeteer-extra-plugin-stealth');
 puppeteer.use(StealthPlugin());
 const path = require('path');
@@ -38,20 +39,12 @@ function waitForOTP(chatId, timeoutMs = 120000) {
 }
 
 async function startRebateTransferSingle(chatId, csvPath) {
-    const browser = await puppeteer.launch({
-            headless: false, // Bắt buộc phải để false khi vượt Cloudflare
-            defaultViewport: null,
-            args: [
-                "--no-sandbox",
-                "--disable-setuid-sandbox",
-                "--start-maximized",
-                // Thêm các cờ giúp giảm tỷ lệ bị Cloudflare nghi ngờ
-                "--disable-blink-features=AutomationControlled", 
-                "--lang=vi-VN,vi"
-            ],
-        });
-
-    const page = await browser.newPage();
+    const { browser, page } = await connect({
+        headless: false,
+        turnstile: true, // Tự động xử lý tích chọn ô Cloudflare Turnstile
+        args: ['--start-maximized',"--no-sandbox","--disable-setuid-sandbox",],
+        connectOption: { defaultViewport: null }
+    });
 
     try {
         // ===== LOGIN =====
