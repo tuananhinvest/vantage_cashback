@@ -153,6 +153,7 @@ async function safeGotoUntilLoginPageReady(page, url, maxRetry = 10) {
 }
 
 /* ================= LOGIN ================= */
+/* ================= LOGIN ================= */
 async function loginVantage(page) {
 
     await page.setExtraHTTPHeaders({
@@ -168,13 +169,13 @@ async function loginVantage(page) {
     if (page.url().includes(LOGIN_KEYWORD)) {
         console.log('🔐 Tiến hành login mới');
 
-        // Tìm và nhập Email 
-        const userInput = await page.waitForSelector('input[data-testid="userName_login"]', { visible: true, timeout: 15000 });
+        // Sửa selector: Tìm thẻ input bên trong div có data-testid="userName_login"
+        const userInput = await page.waitForSelector('div[data-testid="userName_login"] input', { visible: true, timeout: 15000 });
         await userInput.click({ clickCount: 3 });
         await userInput.type(process.env.VANTAGE_EMAIL, { delay: 50 });
 
-        // Tìm và nhập Password 
-        const passInput = await page.waitForSelector('input[data-testid="password_login"]', { visible: true, timeout: 15000 });
+        // Sửa selector: Tìm thẻ input bên trong div có data-testid="password_login"
+        const passInput = await page.waitForSelector('div[data-testid="password_login"] input', { visible: true, timeout: 15000 });
         await passInput.click({ clickCount: 3 });
         await passInput.type(process.env.VANTAGE_PASSWORD, { delay: 50 });
 
