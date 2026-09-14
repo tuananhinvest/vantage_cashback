@@ -121,13 +121,13 @@ async function safeGotoUntilLoginPageReady(page, url, maxRetry = 10) {
             // Chờ networkidle2 để Javascript render hết khung UI Vue/React
             await page.goto(url, {
                 waitUntil: 'networkidle2',
-                timeout: 60000,
+                timeout: 120000,
             });
 
             // Chờ linh hoạt: Hoặc là ô nhập Username xuất hiện , hoặc Form Login xuất hiện 
             await Promise.race([
-                page.waitForSelector('input[data-testid="userName_login"]', { visible: true, timeout: 20000 }),
-                page.waitForSelector('[data-testid="login-form"]', { visible: true, timeout: 20000 })
+                page.waitForSelector('input[data-testid="userName_login"]', { visible: true, timeout: 30000 }),
+                page.waitForSelector('[data-testid="login-form"]', { visible: true, timeout: 30000 })
             ]);
 
             console.log('✅ Trang login Vantage đã load xong form!');

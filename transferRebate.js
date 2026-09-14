@@ -13,8 +13,9 @@ function sleep(ms) {
 async function inputVerificationCode(page, code) {
     console.log('⌨️ Đang nhập mã code xác minh');
 
+    // Sửa lại selector khớp với data-testid="ib-otp-code" thực tế
     const input = await page.waitForSelector(
-        'input[data-testid="code"]',
+        'input[data-testid="ib-otp-code"]',
         { timeout: 15000 }
     );
 
@@ -23,12 +24,12 @@ async function inputVerificationCode(page, code) {
 
     console.log('✅ Đã nhập mã code');
     await sendMessage(
-            USER_ID,
-            '✅ Đã nhập mã code thành công, đang thực hiện chuyển tiền',
-            { parse_mode: 'Markdown' }
-        );
+        USER_ID,
+        '✅ Đã nhập mã code thành công, đang thực hiện chuyển tiền',
+        { parse_mode: 'Markdown' }
+    );
 
-    // ===== CLICK "TÔI ĐỒNG Ý" (FIX CHUẨN) =====
+    // ===== CLICK "TÔI ĐỒNG Ý" =====
     console.log('☑️ Đang tick "Tôi đồng ý"...');
     const agreeResult = await page.evaluate(() => {
         const checkbox = document.querySelector('.ht-protocol__checkbox');
@@ -36,38 +37,36 @@ async function inputVerificationCode(page, code) {
     
         checkbox.scrollIntoView({ block: 'center' });
     
-        // Dispatch đầy đủ event để Vue nhận
-        ['pointerdown', 'mousedown', 'mouseup', 'click'].forEach(type => {
-            checkbox.dispatchEvent(
-                new MouseEvent(type, {
-                    bubbles: true,
-                    cancelable: true,
-                    view: window
-                })
-            );
-        });
+        // Click trực tiếp vào section checkbox
+        checkbox.click();
+        return 'CLICKED';
     });
-    console.log('✅ Đã tick "Tôi đồng ý"');
+    
+    if (agreeResult === 'NOT_FOUND') {
+        console.log('⚠️ Không tìm thấy checkbox "Tôi đồng ý", tiếp tục thử gửi...');
+    } else {
+        console.log('✅ Đã tick "Tôi đồng ý"');
+    }
+
     // đợi Vue cập nhật nút submit
     await sleep(1500);
         
     /* ================= CLICK NÚT GỬI ================= */
-    console.log('📨 Chuẩn bị click nút GỬI (native mouse)...');
-    // lấy wrapper (KHÔNG phải button)
+    console.log('📨 Chuẩn bị click nút GỬI...');
+    const submitBtnSelector = '[data-testid="ibBatchSubmit"]';
+    
     const submitWrapper = await page.waitForSelector(
-        '.transfer-to-others__submit button',
+        submitBtnSelector,
         { timeout: 15000 }
     );
     await sleep(500);
     
-    // lấy bounding box
     const box = await submitWrapper.boundingBox();
     
     if (!box) {
         throw new Error('❌ Không lấy được bounding box nút GỬI');
     }
     
-    // CLICK BẰNG NATIVE MOUSE
     await page.mouse.move(
         box.x + box.width / 2,
         box.y + box.height / 2
@@ -125,24 +124,21 @@ async function transferRebate(page, csvPath) {
 
     await sleep(2000);
 
-    // ===== 1. CLICK TAB "CHUYỂN HOÀN TIỀN CHO NGƯỜI KHÁC" =====
-    console.log('🧭 Đang chọn tab "Chuyển hoàn tiền cho người khác"...');
-    const clicked = await page.evaluate(() => {
-        const tabs = Array.from(document.querySelectorAll('.el-tabs__item'));
-        const target = tabs.find(el =>
-            el.innerText.includes('Chuyển khoản tiền chiết khấu cho người khác')
-        );
+    // ===== 1. CLICK TAB "CHUYỂN REBATE CHO NGƯỜI KHÁC" =====
+console.log('🧭 Đang chọn tab "Chuyển Rebate cho người khác"...');
+const clicked = await page.evaluate(() => {
+    const target = document.querySelector('[data-testid="ibTransferTabToOthers"]');
     
-        if (!target) return false;
-    
-        target.scrollIntoView({ block: 'center' });
-        target.click();
-        return true;
-    });
+    if (!target) return false;
 
-    if (!clicked) {
-        throw new Error('❌ Không click được tab "Chuyển hoàn tiền cho người khác"');
-    }
+    target.scrollIntoView({ block: 'center' });
+    target.click();
+    return true;
+});
+
+if (!clicked) {
+    throw new Error('❌ Không click được tab "Chuyển Rebate cho người khác"');
+}
 
     console.log('✅ Đã click tab "Chuyển hoàn tiền cho người khác"');
 
@@ -164,30 +160,50 @@ async function transferRebate(page, csvPath) {
     // đợi hệ thống xử lý file
     await sleep(3000);
 
-    // ===== GỬI MÃ CODE =====
-    console.log('📨 Chuẩn bị gửi mã code xác minh');
-    
-    // scroll xuống cuối trang
-    await page.evaluate(() => {
-        window.scrollTo(0, document.body.scrollHeight);
-    });
-    
-    await sleep(1500);
-    
-    // click nút "Gửi mã code"
-    const sent = await page.evaluate(() => {
-        const btn = document.querySelector('button[data-testid="code-button"]');
-        if (!btn) return false;
+    // ===== XÁC NHẬN KẾT QUẢ TRÊN POPUP (ĐỒNG Ý) =====
+console.log('🔍 Đang chờ nút "Đồng ý" xuất hiện...');
+const confirmResultSelector = '[data-testid="ibBatchResultConfirm"]';
+
+// Đợi nút hiển thị và sẵn sàng click
+await page.waitForSelector(confirmResultSelector, { visible: true, timeout: 5000 });
+
+console.log('🖱️ Đang bấm nút Đồng ý...');
+await page.evaluate((selector) => {
+    const btn = document.querySelector(selector);
+    if (btn) {
         btn.scrollIntoView({ block: 'center' });
         btn.click();
-        return true;
-    });
-    
-    if (!sent) {
-        throw new Error('❌ Không click được nút Gửi mã code');
     }
-    
-    console.log('✅ Đã click Gửi mã code');
+}, confirmResultSelector);
+
+// Đợi hệ thống phản hồi sau khi bấm Đồng ý
+await sleep(3000);
+
+    // ===== GỬI MÃ CODE =====
+console.log('📨 Chuẩn bị gửi mã code xác minh');
+
+// scroll xuống cuối trang
+await page.evaluate(() => {
+    window.scrollTo(0, document.body.scrollHeight);
+});
+
+await sleep(1500);
+
+// click nút "Gửi mã"
+const sent = await page.evaluate(() => {
+    const btn = document.querySelector('[data-testid="ib-otp-send-btn"]');
+    if (!btn) return false;
+    btn.scrollIntoView({ block: 'center' });
+    btn.click();
+    return true;
+});
+
+if (!sent) {
+    throw new Error('❌ Không click được nút Gửi mã code');
+}
+
+console.log('✅ Đã click Gửi mã code');
+
 }
 
 module.exports = {
